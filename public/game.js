@@ -17,6 +17,7 @@ const circle = {
 };
 
 const bulletRadius = 5;
+const bulletSpeed = 7;
 
 let bullets = [];
 let isMouseDown = false; // флаг, указывающий, зажата ли кнопка мыши
@@ -108,8 +109,8 @@ function update() {
     for (let i = 0; i < bullets.length; i++) {
         const bullet = bullets[i];
 
-        bullet.x += bullet.direction.x * 5;
-        bullet.y += bullet.direction.y * 5;
+        bullet.x += bullet.direction.x * bulletSpeed;
+        bullet.y += bullet.direction.y * bulletSpeed;
 
         for (let p = 0; p < otherPlayers.length; p++) {
             const otherPlayer = otherPlayers[p];
@@ -231,7 +232,7 @@ canvas.addEventListener("mousemove", handleMouseMove);
 requestAnimationFrame(update);
 
 function drawText(text, x, y) {
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "black";
     ctx.font = "bold 16px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
