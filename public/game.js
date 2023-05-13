@@ -2,6 +2,9 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const socket = io();
 
+let lastResponseTime = Date.now();
+let responseTimes = [];
+
 let myId;
 let otherPlayers = [];
 let otherBullets = [];
@@ -245,6 +248,12 @@ function isCollidingCircle(circle1, circle2) {
     return distance < circle1.radius + circle2.radius;
 }
 
+function getAverage(arr) {
+    if (arr.length === 0) return 0; // если массив пустой, вернуть 0, чтобы избежать ошибок
+    const sum = arr.reduce((acc, val) => acc + val); // суммируем все элементы массива
+    return sum / arr.length; // делим сумму на количество элементов, чтобы найти среднее значение
+}
+
 function initSockets() {
     socket.on("init", (params) => {
         myId = params.id;
@@ -263,6 +272,16 @@ function initSockets() {
 
     socket.on("playerInfo", (playerInfo) => {
         otherBullets = playerInfo.bullets;
+
+        const dateNow = Date.now();
+        responseTimes.push(dateNow - lastResponseTime);
+        lastResponseTime = dateNow;
+
+        if (responseTimes.length > 100) {
+            console.info("network speed ===>", getAverage(responseTimes));
+
+            responseTimes = [];
+        }
 
         const pl = otherPlayers.find((pl) => pl.id === playerInfo.id);
 
