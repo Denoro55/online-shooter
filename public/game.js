@@ -7,7 +7,6 @@ let responseTimes = [];
 
 let myId;
 let otherPlayers = [];
-let otherBullets = [];
 
 // Создание объекта круга
 const circle = {
@@ -35,6 +34,10 @@ let rightPressed = false;
 let upPressed = false;
 let downPressed = false;
 
+function getRandomId() {
+    return myId + Date.now() + Math.random();
+}
+
 // Основной игровой цикл
 function update() {
     // Изменение позиции круга в зависимости от флагов удерживания клавиш
@@ -55,7 +58,6 @@ function update() {
         x: circle.x,
         y: circle.y,
         id: myId,
-        bullets,
         score: circle.score,
         leftPressed,
         rightPressed,
@@ -160,12 +162,22 @@ function update() {
         ctx.fill();
     }
 
+    const enemiesBullets = otherPlayers.reduce((acc, pl) => {
+        return [...acc, ...pl.bullets];
+    }, []);
+    const allBullets = [...bullets, ...enemiesBullets];
+
     // перемещаем каждую пулю в направлении ее движения
-    for (let i = 0; i < bullets.length; i++) {
-        const bullet = bullets[i];
+    for (let i = 0; i < allBullets.length; i++) {
+        const bullet = allBullets[i];
 
         bullet.x += bullet.direction.x * bulletSpeed;
         bullet.y += bullet.direction.y * bulletSpeed;
+    }
+
+    // проверяем столкновения наших пуль с врагами
+    for (let i = 0; i < bullets.length; i++) {
+        const playerBullet = bullets[i];
 
         for (let p = 0; p < otherPlayers.length; p++) {
             const otherPlayer = otherPlayers[p];
@@ -173,8 +185,8 @@ function update() {
             if (
                 isCollidingCircle(
                     {
-                        x: bullet.x,
-                        y: bullet.y,
+                        x: playerBullet.x,
+                        y: playerBullet.y,
                         radius: bulletRadius,
                     },
                     {
@@ -185,7 +197,13 @@ function update() {
                 )
             ) {
                 bullets = bullets.filter((b) => {
-                    return b !== bullet;
+                    if (b == playerBullet) {
+                        socket.emit("enemyBulletDestroyed", playerBullet);
+
+                        return false;
+                    }
+
+                    return true;
                 });
 
                 circle.score += 1;
@@ -194,7 +212,17 @@ function update() {
     }
 
     // удаляем пули, которые вышли за пределы холста
-    bullets = bullets.filter((bullet) => bullet.x > 0 && bullet.y > 0 && bullet.x < canvas.width && bullet.y < canvas.height);
+    bullets = bullets.filter((bullet) => {
+        return bullet.x > 0 && bullet.y > 0 && bullet.x < canvas.width && bullet.y < canvas.height;
+    });
+
+    for (let i = 0; i < otherPlayers.length; i++) {
+        const otherPlayer = otherPlayers[i];
+
+        otherPlayer.bullets = otherPlayer.bullets.filter((bullet) => {
+            return bullet.x > 0 && bullet.y > 0 && bullet.x < canvas.width && bullet.y < canvas.height;
+        });
+    }
 
     if (isMouseDown && reloadTime <= 0) {
         shoot();
@@ -253,11 +281,17 @@ function shoot() {
         y: directionY / directionLength,
     };
 
-    bullets.push({
+    const bullet = {
         x: playerX,
         y: playerY,
         direction: direction,
-    });
+        id: getRandomId(),
+        playerId: myId,
+    };
+
+    bullets.push(bullet);
+
+    socket.emit("enemyBulletCreated", bullet);
 }
 
 // функция для обработки события нажатия на кнопку мыши
@@ -314,9 +348,13 @@ function initSockets() {
         });
     });
 
-    socket.on("playerInfo", (playerInfo) => {
-        otherBullets = playerInfo.bullets;
+    socket.on("playerDisconnected", (player) => {
+        otherPlayers = otherPlayers.filter((pl) => {
+            return pl.id !== player.id;
+        });
+    });
 
+    socket.on("playerInfo", (playerInfo) => {
         // const dateNow = Date.now();
         // responseTimes.push(dateNow - lastResponseTime);
         // lastResponseTime = dateNow;
@@ -332,7 +370,6 @@ function initSockets() {
         if (pl) {
             pl.xx = playerInfo.x;
             pl.yy = playerInfo.y;
-            pl.bullets = otherBullets;
             pl.score = playerInfo.score;
 
             pl.leftPressed = playerInfo.leftPressed;
@@ -342,7 +379,27 @@ function initSockets() {
         }
     });
 
+    socket.on("enemyBulletCreated", (bullet) => {
+        const pl = otherPlayers.find((pl) => pl.id === bullet.playerId);
+
+        if (pl) {
+            pl.bullets.push(bullet);
+        }
+    });
+
+    socket.on("enemyBulletDestroyed", (bullet) => {
+        const pl = otherPlayers.find((pl) => pl.id === bullet.playerId);
+
+        if (pl) {
+            pl.bullets = pl.bullets.filter((b) => b.id !== bullet.id);
+        }
+    });
+
     // socket.emit("chat message", input.value);
 }
 
 initSockets();
+
+setInterval(() => {
+    console.info(bullets, otherPlayers);
+}, 10000);

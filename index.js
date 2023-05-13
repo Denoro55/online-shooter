@@ -41,6 +41,14 @@ io.on("connection", (socket) => {
         socket.broadcast.emit("playerInfo", msg);
     });
 
+    socket.on("enemyBulletCreated", (msg) => {
+        socket.broadcast.emit("enemyBulletCreated", msg);
+    });
+
+    socket.on("enemyBulletDestroyed", (msg) => {
+        socket.broadcast.emit("enemyBulletDestroyed", msg);
+    });
+
     socket.on("disconnect", () => {
         console.log("user disconnected");
 
