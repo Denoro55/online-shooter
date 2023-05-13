@@ -51,6 +51,18 @@ function update() {
         circle.y += circle.speed;
     }
 
+    socket.emit("playerInfo", {
+        x: circle.x,
+        y: circle.y,
+        id: myId,
+        bullets,
+        score: circle.score,
+        leftPressed,
+        rightPressed,
+        upPressed,
+        downPressed,
+    });
+
     // Ограничение перемещения круга за границы экрана
     if (circle.x - circle.radius < 0) {
         circle.x = circle.radius;
@@ -98,6 +110,46 @@ function update() {
 
     for (let i = 0; i < otherPlayers.length; i++) {
         const otherPlayer = otherPlayers[i];
+
+        if (otherPlayer.leftPressed) {
+            otherPlayer.x -= circle.speed;
+        }
+        if (otherPlayer.rightPressed) {
+            otherPlayer.x += circle.speed;
+        }
+        if (otherPlayer.upPressed) {
+            otherPlayer.y -= circle.speed;
+        }
+        if (otherPlayer.downPressed) {
+            otherPlayer.y += circle.speed;
+        }
+
+        if (otherPlayer.x < otherPlayer.xx && !otherPlayer.rightPressed) {
+            otherPlayer.x += circle.speed;
+        }
+        if (otherPlayer.x > otherPlayer.xx && !otherPlayer.leftPressed) {
+            otherPlayer.x -= circle.speed;
+        }
+        if (otherPlayer.y < otherPlayer.yy && !otherPlayer.downPressed) {
+            otherPlayer.y += circle.speed;
+        }
+        if (otherPlayer.y > otherPlayer.yy && !otherPlayer.upPressed) {
+            otherPlayer.y -= circle.speed;
+        }
+
+        // Ограничение перемещения круга за границы экрана
+        if (otherPlayer.x - circle.radius < 0) {
+            otherPlayer.x = circle.radius;
+        }
+        if (otherPlayer.x + circle.radius > canvas.width) {
+            otherPlayer.x = canvas.width - circle.radius;
+        }
+        if (otherPlayer.y - circle.radius < 0) {
+            otherPlayer.y = circle.radius;
+        }
+        if (otherPlayer.y + circle.radius > canvas.height) {
+            otherPlayer.y = canvas.height - circle.radius;
+        }
 
         drawText(otherPlayer.score, otherPlayer.x, otherPlayer.y - 30);
 
@@ -153,14 +205,6 @@ function update() {
     if (reloadTime > 0) {
         reloadTime -= 1;
     }
-
-    socket.emit("playerInfo", {
-        x: circle.x,
-        y: circle.y,
-        id: myId,
-        bullets,
-        score: circle.score,
-    });
 
     // Запуск следующего цикла
     requestAnimationFrame(update);
@@ -273,23 +317,28 @@ function initSockets() {
     socket.on("playerInfo", (playerInfo) => {
         otherBullets = playerInfo.bullets;
 
-        const dateNow = Date.now();
-        responseTimes.push(dateNow - lastResponseTime);
-        lastResponseTime = dateNow;
+        // const dateNow = Date.now();
+        // responseTimes.push(dateNow - lastResponseTime);
+        // lastResponseTime = dateNow;
 
-        if (responseTimes.length > 100) {
-            console.info("network speed ===>", getAverage(responseTimes));
+        // if (responseTimes.length > 100) {
+        //     console.info("network speed ===>", getAverage(responseTimes));
 
-            responseTimes = [];
-        }
+        //     responseTimes = [];
+        // }
 
         const pl = otherPlayers.find((pl) => pl.id === playerInfo.id);
 
         if (pl) {
-            pl.x = playerInfo.x;
-            pl.y = playerInfo.y;
+            pl.xx = playerInfo.x;
+            pl.yy = playerInfo.y;
             pl.bullets = otherBullets;
             pl.score = playerInfo.score;
+
+            pl.leftPressed = playerInfo.leftPressed;
+            pl.rightPressed = playerInfo.rightPressed;
+            pl.upPressed = playerInfo.upPressed;
+            pl.downPressed = playerInfo.downPressed;
         }
     });
 

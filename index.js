@@ -23,6 +23,10 @@ io.on("connection", (socket) => {
         id: socket.id,
         bullets: [],
         score: 0,
+        rightPressed: false,
+        downPressed: false,
+        leftPressed: false,
+        upPressed: false,
     };
 
     players.push(newPlayer);
